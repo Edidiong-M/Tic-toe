@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tic Tac Toe Pro Shop</title>
+<style>
+:root {
+  --bg: #f5f5f5;
+  --fg: #222;
+  --accent: #0077ff;
+  --cell: #fff;
+  --cell-border: #ccc;
+}
+body.dark {
+  --bg: #121212;
+  --fg: #eee;
+  --accent: #4da3ff;
+  --cell: #1e1e1e;
+  --cell-border: #444;
+}
+body {
+  margin: 0;
+  font-family: Poppins, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+.container { width: 100%; max-width: 500px; text-align: center; }
+h1 { margin-bottom: 10px; }
+button {
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  padding: 10px 16px;
+  margin: 5px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+button:hover { opacity: 0.9; }
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 100px);
+  gap: 8px;
+  justify-content: center;
+  margin: 20px auto;
+}
+.cell {
+  width: 100px;
+  height: 100px;
+  background: var(--cell);
+  border: 2px solid var(--cell-border);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2.5rem;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: background 0.3s, transform 0.2s;
+}
+.cell:hover { background: var(--accent); color: #fff; transform: scale(1.05); }
+.profiles {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  text-align: left;
+}
+.profile {
+  width: 48%;
+  padding: 10px;
+  background: var(--cell);
+  border-radius: 10px;
+  border: 1px solid var(--cell-border);
+}
+.profile h3 { margin: 0 0 5px; }
+
+/* Side Panel Shop */
+#profilePanel {
+  position: fixed;
+  top: 0; right: -320px;
+  width: 300px; height: 100%;
+  background: var(--cell);
+  border-left: 2px solid var(--cell-border);
+  box-shadow: -2px 0 8px rgba(0,0,0,0.3);
+  padding: 20px;
+  transition: right 0.4s ease;
+  overflow-y: auto;
+}
+#profilePanel.open { right: 0; }
+#profilePanel h2 { margin-top: 0; color: var(--accent); }
+#closeProfile {
+  background: crimson;
+  margin-top: 15px;
+  width: 100%;
+}
+.shop-item {
+  border: 1px solid var(--cell-border);
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+.shop-item button { margin-top: 5px; width: 100%; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Tic Tac Toe Pro+</h1>
+  <div id="setup">
+    <input id="p1Name" placeholder="Player 1 name"><br><br>
+    <input id="p1Mark" placeholder="Player 1 mark (default X)" maxlength="2"><br><br>
+
+    <label>Game Mode:</label><br>
+    <select id="gameMode">
+      <option value="ai">Play vs AI</option>
+      <option value="pvp">Play vs Player</option>
+    </select>
+    <br><br>
+
+    <div id="p2Inputs">
+      <input id="p2Name" placeholder="Player 2 name"><br><br>
+      <input id="p2Mark" placeholder="Player 2 mark (default O)" maxlength="2"><br><br>
+    </div>
+
+    <label for="difficulty">AI Difficulty:</label>
+    <select id="difficulty">
+      <option value="easy">Easy</option>
+      <option value="medium">Medium</option>
+      <option value="hard" selected>Hard</option>
+    </select>
+    <br><br>
+    <button onclick="startGame()">Start Game</button>
+  </div>
+  <div id="game" style="display:none;">
+    <button onclick="toggleTheme()">Toggle Light/Dark</button>
+    <button onclick="openProfile()">Profile / Shop</button>
+    <div class="board" id="board"></div>
+    <p id="status"></p>
+    <p id="nextStarter" style="font-weight:bold; color:var(--accent);"></p>
+    <div class="profiles">
+      <div class="profile" id="p1Profile"></div>
+      <div class="profile" id="p2Profile"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Side Panel -->
+<div id="profilePanel">
+  <h2>Profile & Shop</h2>
+  <div id="profileContent"></div>
+  <h3>Boards</h3>
+  <div class="shop-item"><p>🎨 Blue Board (10 coins)</p><button onclick="buyBoard('blue')">Buy / Equip</button></div>
+  <div class="shop-item"><p>🌌 Galaxy Board (20 coins)</p><button onclick="buyBoard('galaxy')">Buy / Equip</button></div>
+  <div class="shop-item"><p>✨ Gold Board (30 coins)</p><button onclick="buyBoard('gold')">Buy / Equip</button></div>
+
+  <h3>Marks</h3>
+  <div class="shop-item"><p>🔥 Fire Mark (10 coins)</p><button onclick="buyMark('🔥')">Buy / Equip</button></div>
+  <div class="shop-item"><p>💎 Diamond Mark (15 coins)</p><button onclick="buyMark('💎')">Buy / Equip</button></div>
+  <div class="shop-item"><p>⚡ Lightning Mark (20 coins)</p><button onclick="buyMark('⚡')">Buy / Equip</button></div>
+  <div class="shop-item"><p>👑 Crown Mark (25 coins)</p><button onclick="buyMark('👑')">Buy / Equip</button></div>
+
+  <button id="closeProfile" onclick="closeProfile()">Close</button>
+</div>
+
+<script>
+let p1, p2, vsAI=false, board=[], currentPlayer, starter, aiLevel="hard";
+let activeBoard="default";
+
+document.getElementById("gameMode").addEventListener("change", e=>{
+  if(e.target.value==="pvp"){ document.getElementById("p2Inputs").style.display="block"; }
+  else { document.getElementById("p2Inputs").style.display="none"; }
+});
+
+function startGame(){
+  const mode=document.getElementById('gameMode').value;
+  const p1Name=document.getElementById('p1Name').value||"Player 1";
+  const p1Mark=document.getElementById('p1Mark').value||"X";
+  
+  if(mode==="ai"){
+    vsAI=true;
+    const aiMark=(p1Mark==="X"?"O":"X"); // AI takes the other mark
+    const p2Name="AI";
+    aiLevel=document.getElementById('difficulty').value;
+    let savedP1=JSON.parse(localStorage.getItem(p1Name))||{wins:0,losses:0,draws:0,coins:0,mark:p1Mark};
+    let savedP2=JSON.parse(localStorage.getItem(p2Name))||{wins:0,losses:0,draws:0,coins:0,mark:aiMark};
+    p1={name:p1Name,mark:savedP1.mark||p1Mark,stats:savedP1};
+    p2={name:p2Name,mark:savedP2.mark||aiMark,stats:savedP2};
+  } else {
+    vsAI=false;
+    const p2Name=document.getElementById('p2Name').value||"Player 2";
+    const p2Mark=document.getElementById('p2Mark').value||(p1Mark==="X"?"O":"X");
+    let savedP1=JSON.parse(localStorage.getItem(p1Name))||{wins:0,losses:0,draws:0,coins:0,mark:p1Mark};
+    let savedP2=JSON.parse(localStorage.getItem(p2Name))||{wins:0,losses:0,draws:0,coins:0,mark:p2Mark};
+    p1={name:p1Name,mark:savedP1.mark||p1Mark,stats:savedP1};
+    p2={name:p2Name,mark:savedP2.mark||p2Mark,stats:savedP2};
+  }
+  
+  starter=p1.mark; currentPlayer=starter;
+  document.getElementById('setup').style.display='none';
+  document.getElementById('game').style.display='block';
+  resetBoard();
+}
+function toggleTheme(){ document.body.classList.toggle('dark'); }
+function resetBoard(){
+  board=Array(9).fill('');
+  const boardDiv=document.getElementById('board');
+  boardDiv.innerHTML='';
+  for(let i=0;i<9;i++){
+    const cell=document.createElement('div');
+    cell.classList.add('cell');
+    if(activeBoard==="blue"){ cell.style.background="#cce6ff"; }
+    if(activeBoard==="galaxy"){ cell.style.background="linear-gradient(45deg,#0f0c29,#302b63,#24243e)"; cell.style.color="#fff"; }
+    if(activeBoard==="gold"){ cell.style.background="gold"; cell.style.color="#000"; }
+    cell.addEventListener('click',()=>makeMove(i));
+    boardDiv.appendChild(cell);
+  }
+  currentPlayer=starter;
+  document.getElementById('status').textContent=`${getPlayer(currentPlayer).name}'s turn (${currentPlayer})`;
+  document.getElementById('nextStarter').textContent="";
+  updateProfiles();
+  if(vsAI&&currentPlayer===p2.mark) setTimeout(aiMove,600);
+}
+function makeMove(i){
+  if(board[i]!==''||checkWinner(board,p1.mark)||checkWinner(board,p2.mark)) return;
+  board[i]=currentPlayer;
+  render();
+  if(checkWinner(board,currentPlayer)){
+    if(currentPlayer===p1.mark){p1.stats.wins++;p2.stats.losses++;p1.stats.coins+=5;}
+    else {p2.stats.wins++;p1.stats.losses++;p2.stats.coins+=5;}
+    saveProfiles(); updateProfiles();
+    starter=(starter===p1.mark?p2.mark:p1.mark);
+    document.getElementById('nextStarter').textContent=`👉 Next round starter: ${getPlayer(starter).name} (${starter})`;
+    setTimeout(resetBoard,1500);
+    return;
+  }
+  if(board.every(c=>c!=='')){
+    p1.stats.draws++;p2.stats.draws++;p1.stats.coins++;p2.stats.coins++;
+    saveProfiles(); updateProfiles();
+    starter=(starter===p1.mark?p2.mark:p1.mark);
+    document.getElementById('nextStarter').textContent=`👉 Next round starter: ${getPlayer(starter).name} (${starter})`;
+    setTimeout(resetBoard,1500);
+    return;
+  }
+  currentPlayer=(currentPlayer===p1.mark?p2.mark:p1.mark);
+  document.getElementById('status').textContent=`${getPlayer(currentPlayer).name}'s turn (${currentPlayer})`;
+  if(vsAI&&currentPlayer===p2.mark) setTimeout(aiMove,500);
+}
+function aiMove(){
+  let move;
+  if(aiLevel==="easy"){
+    let available=board.map((v,i)=>v===''?i:null).filter(v=>v!==null);
+    move=available[Math.floor(Math.random()*available.length)];
+  } else if(aiLevel==="medium"){
+    if(Math.random()<0.5){
+      let available=board.map((v,i)=>v===''?i:null).filter(v=>v!==null);
+      move=available[Math.floor(Math.random()*available.length)];
+    } else { move=bestMove(); }
+  } else { move=bestMove(); }
+  makeMove(move);
+}
+function bestMove(){
+  let bestScore=-Infinity, move;
+  for(let i=0;i<9;i++){
+    if(board[i]===''){
+      board[i]=p2.mark;
+      let score=minimax(board,0,false);
+      board[i]='';
+      if(score>bestScore){bestScore=score;move=i;}
+    }
+  }
+  return move;
+}
+function minimax(b, depth, isMax){
+  if(checkWinner(b,p2.mark)) return 10-depth;
+  if(checkWinner(b,p1.mark)) return depth-10;
+  if(b.every(c=>c!=='')) return 0;
+  if(isMax){
+    let best=-Infinity;
+    for(let i=0;i<9;i++){
+      if(b[i]===''){b[i]=p2.mark;best=Math.max(best,minimax(b,depth+1,false));b[i]='';}
+    }
+    return best;
+  } else {
+    let best=Infinity;
+    for(let i=0;i<9;i++){
+      if(b[i]===''){b[i]=p1.mark;best=Math.min(best,minimax(b,depth+1,true));b[i]='';}
+    }
+    return best;
+  }
+}
+function render(){[...document.getElementById('board').children].forEach((c,i)=>c.textContent=board[i]);}
+function checkWinner(b,mark){
+  const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  return wins.some(comb=>comb.every(idx=>b[idx]===mark));
+}
+function updateProfiles(){
+  document.getElementById('p1Profile').innerHTML=`
+    <h3>${p1.name} (${p1.mark})</h3>
+    Wins: ${p1.stats.wins}<br>Losses: ${p1.stats.losses}<br>
+    Draws: ${p1.stats.draws}<br>Coins: ${p1.stats.coins}`;
+  document.getElementById('p2Profile').innerHTML=`
+    <h3>${p2.name} (${p2.mark})</h3>
+    Wins: ${p2.stats.wins}<br>Losses: ${p2.stats.losses}<br>
+    Draws: ${p2.stats.draws}<br>Coins: ${p2.stats.coins}`;
+}
+function saveProfiles(){
+  localStorage.setItem(p1.name,JSON.stringify(p1.stats));
+  localStorage.setItem(p2.name,JSON.stringify(p2.stats));
+}
+function getPlayer(mark){ return mark===p1.mark?p1:p2; }
+function openProfile(){
+  const user=p1;
+  document.getElementById('profileContent').innerHTML=`
+    <strong>Name:</strong> ${user.name}<br>
+    <strong>Mark:</strong> ${user.mark}<br>
+    <strong>Wins:</strong> ${user.stats.wins}<br>
+    <strong>Losses:</strong> ${user.stats.losses}<br>
+    <strong>Draws:</strong> ${user.stats.draws}<br>
+    <strong>Coins:</strong> ${user.stats.coins}<br>`;
+  document.getElementById('profilePanel').classList.add('open');
+}
+function closeProfile(){ document.getElementById('profilePanel').classList.remove('open'); }
+
+// --- Shop System ---
+function buyBoard(type){
+  let cost=(type==="blue"?10:(type==="galaxy"?20:30));
+  if(p1.stats.coins>=cost){
+    p1.stats.coins-=cost;
+    activeBoard=type;
+    saveProfiles(); updateProfiles(); resetBoard();
+    alert(`🎉 ${type} Board equipped!`);
+  } else alert("Not enough coins!");
+}
+function buyMark(mark){
+  let cost=(mark==="💎"?15:(mark==="⚡"?20:(mark==="👑"?25:10)));
+  if(p1.stats.coins>=cost){
+    p1.stats.coins-=cost;
+    p1.mark=mark;
+    saveProfiles(); updateProfiles(); resetBoard();
+    alert(`🎉 ${mark} equipped as your mark!`);
+  } else alert("Not enough coins!");
+}
+</script>
+</body>
+</html>
